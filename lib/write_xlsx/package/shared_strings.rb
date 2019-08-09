@@ -11,21 +11,25 @@ module Writexlsx
       def initialize
         @writer  = Package::XMLWriterSimple.new
         @strings = [] # string table
-        @count   = {} # => count
+        @stats_of_all = {} # => count and index in @strings
       end
 
       def index(string, params = {})
         add(string) unless params[:only_query]
-        @strings.index(string)
+        # @strings.index(string) is quite slow with massive elements
+        @stats_of_all[string]&.[](:index)
       end
 
       def add(string)
         str = string.dup
-        if @count[str]
-          @count[str] += 1
+        if @stats_of_all[str]
+          @stats_of_all[str][:count] += 1
         else
           @strings << str
-          @count[str] = 1
+          @stats_of_all[str] = {
+            count: 1,
+            index: @strings.count - 1
+          }
         end
       end
 
@@ -120,7 +124,7 @@ module Writexlsx
       end
 
       def total_count
-        @count.values.inject(0) { |sum, count| sum += count }
+        @stats_of_all.values.inject(0) { |sum, stats| sum += stats[:count] }
       end
 
       def unique_count
